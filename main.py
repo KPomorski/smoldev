@@ -6,15 +6,15 @@ import ast
 stub = modal.Stub("smol-developer-v1")
 generatedDir = "generated"
 openai_image = modal.Image.debian_slim().pip_install("openai", "tiktoken")
-openai_model = "gpt-4" # or 'gpt-3.5-turbo',
-openai_model_max_tokens = 2000 # i wonder how to tweak this properly
+openai_model = 'gpt-3.5-turbo'
+openai_model_max_tokens = 2000  # i wonder how to tweak this properly
 
 
 @stub.function(
     image=openai_image,
     secret=modal.Secret.from_dotenv(),
     retries=modal.Retries(
-        max_retries=3,
+        max_retries=0,
         backoff_coefficient=2.0,
         initial_delay=1.0,
     ),
@@ -28,8 +28,8 @@ def generate_response(system_prompt, user_prompt, *args):
     def reportTokens(prompt):
         encoding = tiktoken.encoding_for_model(openai_model)
         # print number of tokens in light gray, with first 10 characters of prompt in green
-        print("\033[37m" + str(len(encoding.encode(prompt))) + " tokens\033[0m" + " in prompt: " + "\033[92m" + prompt[:50] + "\033[0m")
-        
+        print("\033[37m" + str(len(encoding.encode(prompt))) + " tokens\033[0m" + " in prompt: " + "\033[92m" + prompt[
+                                                                                                                :50] + "\033[0m")
 
     # Set up your OpenAI API credentials
     openai.api_key = os.environ["OPENAI_API_KEY"]
@@ -66,13 +66,13 @@ def generate_file(filename, filepaths_string=None, shared_dependencies=None, pro
     # call openai api with this prompt
     filecode = generate_response.call(
         f"""You are an AI developer who is trying to write a program that will generate code for the user based on their intent.
-        
+
     the app is: {prompt}
 
     the files we have decided to generate are: {filepaths_string}
 
     the shared dependencies (like filenames and variable names) we have decided on are: {shared_dependencies}
-    
+
     only write valid code for the given filepath and file type, and return only the code.
     do not add any other explanation, only return valid code for that file type.
     """,
@@ -80,20 +80,20 @@ def generate_file(filename, filepaths_string=None, shared_dependencies=None, pro
     We have broken up the program into per-file generation. 
     Now your job is to generate only the code for the file {filename}. 
     Make sure to have consistent filenames if you reference other files we are also generating.
-    
+
     Remember that you must obey 3 things: 
        - you are generating code for the file {filename}
        - do not stray from the names of the files and the shared dependencies we have decided on
        - MOST IMPORTANT OF ALL - the purpose of our app is {prompt} - every line of code you generate must be valid code. Do not include code fences in your response, for example
-    
+
     Bad response:
     ```javascript 
     console.log("hello world")
     ```
-    
+
     Good response:
     console.log("hello world")
-    
+
     Begin generating the code now.
 
     """,
@@ -120,9 +120,9 @@ def main(prompt, directory=generatedDir, file=None):
     # call openai api with this prompt
     filepaths_string = generate_response.call(
         """You are an AI developer who is trying to write a program that will generate code for the user based on their intent.
-        
+
     When given their intent, create a complete, exhaustive list of filepaths that the user would write to make the program.
-    
+
     only list the filepaths you would write, and return them as a python list of strings. 
     do not add any other explanation, only return a python list of strings.
     """,
@@ -143,7 +143,8 @@ def main(prompt, directory=generatedDir, file=None):
         if file is not None:
             # check file
             print("file", file)
-            filename, filecode = generate_file(file, filepaths_string=filepaths_string, shared_dependencies=shared_dependencies, prompt=prompt)
+            filename, filecode = generate_file(file, filepaths_string=filepaths_string,
+                                               shared_dependencies=shared_dependencies, prompt=prompt)
             write_file(filename, filecode, directory)
         else:
             clean_dir(directory)
@@ -151,13 +152,13 @@ def main(prompt, directory=generatedDir, file=None):
             # understand shared dependencies
             shared_dependencies = generate_response.call(
                 """You are an AI developer who is trying to write a program that will generate code for the user based on their intent.
-                
+
             In response to the user's prompt:
 
             ---
             the app is: {prompt}
             ---
-            
+
             the files we have decided to generate are: {filepaths_string}
 
             Now that we have a list of files, we need to understand what dependencies they share.
@@ -169,10 +170,12 @@ def main(prompt, directory=generatedDir, file=None):
             print(shared_dependencies)
             # write shared dependencies as a md file inside the generated directory
             write_file("shared_dependencies.md", shared_dependencies, directory)
-            
+
             # Existing for loop
             for filename, filecode in generate_file.map(
-                list_actual, order_outputs=False, kwargs=dict(filepaths_string=filepaths_string, shared_dependencies=shared_dependencies, prompt=prompt)
+                    list_actual, order_outputs=False,
+                    kwargs=dict(filepaths_string=filepaths_string, shared_dependencies=shared_dependencies,
+                                prompt=prompt)
             ):
                 write_file(filename, filecode, directory)
 
@@ -185,7 +188,7 @@ def write_file(filename, filecode, directory):
     # Output the filename in blue color
     print("\033[94m" + filename + "\033[0m")
     print(filecode)
-    
+
     file_path = directory + "/" + filename
     dir = os.path.dirname(file_path)
     os.makedirs(dir, exist_ok=True)
@@ -199,7 +202,8 @@ def write_file(filename, filecode, directory):
 def clean_dir(directory):
     import shutil
 
-    extensions_to_skip = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.ico', '.tif', '.tiff']  # Add more extensions if needed
+    extensions_to_skip = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.ico', '.tif',
+                          '.tiff']  # Add more extensions if needed
 
     # Check if the directory exists
     if os.path.exists(directory):
